@@ -2,18 +2,21 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #     "anthropic", # type: ignore
+#     "dotenv>=0.9.9",
+#     "google-genai>=1.74.0",
 #     "pydantic",
 # ]
 # ///
 
+from dotenv import load_dotenv
 import os
 import sys
-import argparse
-import logging
 from typing import List, Dict, Any
-from anthropic import Anthropic
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
+load_dotenv()
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +37,7 @@ class Tool(BaseModel):
 
 class AIAgent:
     def __init__(self, api_key: str):
-        self.client = Anthropic(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
         self.messages: List[Dict[str, Any]] = []
         self.tools: List[Tool] = []
         self._setup_tools()
@@ -235,14 +238,14 @@ def main():
         description="AI Code Assistant - A conversational AI agent with file editing capabilities"
     )
     parser.add_argument(
-        "--api-key", help="Anthropic API key (or set ANTHROPIC_API_KEY env var)"
+        "--api-key", help="Anthropic API key (or set GEMINI_API_KEY env var)"
     )
     args = parser.parse_args()
 
-    api_key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")
+    api_key = args.api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print(
-            "Error: Please provide an API key via --api-key or ANTHROPIC_API_KEY environment variable"
+            "Error: Please provide an API key via --api-key or GEMINI_API_KEY environment variable"
         )
         sys.exit(1)
 
@@ -283,7 +286,7 @@ if __name__ == "__main__":
 
 
 # ```bash
-# export ANTHROPIC_API_KEY="your-api
+# export GEMINI_API_KEY="your-api
 # uv run runbook/07_add_personality.py
 # ```
 # AI Code Assistant
