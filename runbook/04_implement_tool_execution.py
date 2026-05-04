@@ -2,15 +2,21 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #     "anthropic", # type: ignore
+#     "dotenv>=0.9.9",
+#     "google-genai>=1.74.0",
 #     "pydantic",
 # ]
 # ///
 
+from dotenv import load_dotenv
 import os
 import sys
 from typing import List, Dict, Any
-from anthropic import Anthropic
+from google import genai
+# from google.genai import types
 from pydantic import BaseModel
+
+load_dotenv()
 
 
 class Tool(BaseModel):
@@ -19,9 +25,9 @@ class Tool(BaseModel):
     input_schema: Dict[str, Any]
 
 
-class AIAgent:
+class AiAgent:
     def __init__(self, api_key: str):
-        self.client = Anthropic(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
         self.messages: List[Dict[str, Any]] = []
         self.tools: List[Tool] = []
         self._setup_tools()
@@ -158,16 +164,16 @@ class AIAgent:
 
 
 if __name__ == "__main__":
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("Error: ANTHROPIC_API_KEY not set")
+        print("Error: GEMINI_API_KEY not set")
         sys.exit(1)
-    agent = AIAgent(api_key)
+    agent = AiAgent(api_key)
     # Test the tools
     print(agent._list_files("."))
 
 # ```bash
-# export ANTHROPIC_API_KEY="your-api
+# export GEMINI_API_KEY="your-api
 # uv run runbook/04_implement_tool_execution.py
 # ```
 # Should print:
