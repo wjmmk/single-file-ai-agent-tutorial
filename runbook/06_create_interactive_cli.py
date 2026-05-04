@@ -11,6 +11,8 @@
 from dotenv import load_dotenv
 import os
 import sys
+import argparse
+import logging
 from typing import List, Dict, Any
 from google import genai
 from google.genai import types
@@ -173,65 +175,93 @@ class AIAgent:
             return f"Error editing file: {str(e)}"
 
     def chat(self, user_input: str) -> str:
-        self.messages.append({"role": "user", "content": user_input})
+        # 1. Agregar mensaje del usuario al estilo Google
+        self.messages.append(types.Content(role="user", parts=[types.Part.from_text(text=user_input)]))
 
-        tool_schemas = [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.input_schema,
-            }
-            for tool in self.tools
+        # 2. Convertir tus herramientas al formato que Gemini entiende
+        gemini_tools = [
+            types.Tool(
+                function_declarations=[
+                    types.FunctionDeclaration(
+                        name=t.name,
+                        description=t.description,
+                        parameters=t.input_schema,
+                    )
+                ]
+            )
+            for t in self.tools
         ]
 
         while True:
             try:
-                response = self.client.messages.create(
-                    model="claude-sonnet-4-5-20250929",
-                    max_tokens=4096,
-                    messages=self.messages,
-                    tools=tool_schemas,
+                # 3. Llamada a la API
+                response = self.client.models.generate_content(
+                    #model="gemini-2.0-flash", # Modelo actual recomendado
+                    model="gemini-3-flash-preview",
+                    contents=self.messages,
+                    config=types.GenerateContentConfig(
+                        tools=gemini_tools,
+                    ),
                 )
 
-                assistant_message = {"role": "assistant", "content": []}
+                # 4. Guardar la respuesta del modelo en el historial
+                # El SDK de Google permite añadir la respuesta directamente
+                self.messages.append(response.candidates[0].content)
 
-                for content in response.content:
-                    if content.type == "text":
-                        assistant_message["content"].append(
-                            {"type": "text", "text": content.text}
-                        )
-                    elif content.type == "tool_use":
-                        assistant_message["content"].append(
-                            {
-                                "type": "tool_use",
-                                "id": content.id,
-                                "name": content.name,
-                                "input": content.input,
-                            }
-                        )
-
-                self.messages.append(assistant_message)
-
-                tool_results = []
-                for content in response.content:
-                    if content.type == "tool_use":
-                        result = self._execute_tool(content.name, content.input)
-                        tool_results.append(
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": content.id,
-                                "content": result,
-                            }
+                # 5. Revisar si el modelo quiere usar una herramienta
+                # En Google, esto viene en 'parts' como 'function_call'
+                found_tool_use = False
+                for part in response.candidates[0].content.parts:
+                    if part.function_call:
+                        found_tool_use = True
+                        tool_call = part.function_call
+                        
+                        # Ejecutar la herramienta
+                        print(f"RESPUESTA: Ejecutando herramienta 🔩{tool_call.name}🔩. \n")
+                        result = self._execute_tool(tool_call.name, tool_call.args)
+                        
+                        # 6. Añadir el RESULTADO al historial (role: tool)
+                        self.messages.append(
+                            types.Content(
+                                role="tool",
+                                parts=[
+                                    types.Part.from_function_response(
+                                        name=tool_call.name,
+                                        response={"result": result}
+                                    )
+                                ]
+                            )
                         )
 
-                if tool_results:
-                    self.messages.append({"role": "user", "content": tool_results})
-                else:
-                    return response.content[0].text if response.content else ""
+                # Si no hubo llamadas a herramientas, retornamos el texto final
+                if not found_tool_use:
+                    return response.text
 
             except Exception as e:
-                return f"Error: {str(e)}"
+                return f"Error en el flujo de Gemini: {str(e)}"
 
+    # MÉTODOS DE AYUDA (Iguales a los tuyos)
+    def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
+        if tool_name == "read_file": return self._read_file(tool_input["path"])
+        if tool_name == "list_files": return self._list_files(tool_input.get("path", "."))
+        if tool_name == "edit_file": 
+            return self._edit_file(tool_input["path"], tool_input.get("old_text", ""), tool_input["new_text"])
+        return f"Unknown tool: {tool_name}"
+
+    def _read_file(self, path: str) -> str:
+        try:
+            with open(path, "r", encoding="utf-8") as f: return f.read()
+        except Exception as e: return str(e)
+
+    def _list_files(self, path: str) -> str:
+        try: return str(os.listdir(path))
+        except Exception as e: return str(e)
+
+    def _edit_file(self, path: str, old_text: str, new_text: str) -> str:
+        try:
+            with open(path, "w", encoding="utf-8") as f: f.write(new_text)
+            return "Success"
+        except Exception as e: return str(e)
 
 def main():
     parser = argparse.ArgumentParser(
