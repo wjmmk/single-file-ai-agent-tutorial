@@ -258,8 +258,8 @@ if __name__ == "__main__":
         sys.exit(1)
     agent = AIAgent(api_key)
     # Test chat
-    response = agent.chat("¿Cuales archivos hay en el directorio actual?")
-    """ response = agent.chat("¿En qué puedes ayudarme?") """
+    """ response = agent.chat("¿Cuales archivos hay en el directorio actual?") """
+    response = agent.chat("¿En qué puedes ayudarme?")
     print(response)
 
 

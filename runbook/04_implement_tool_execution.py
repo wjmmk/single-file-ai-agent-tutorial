@@ -170,7 +170,8 @@ if __name__ == "__main__":
         sys.exit(1)
     agent = AiAgent(api_key)
     # Test the tools
-    print(agent._list_files("."))
+    """ print(agent._list_files(".")) """
+    print(agent._read_file("./01_basic_script.py"))
 
 # ```bash
 # export GEMINI_API_KEY="your-api
