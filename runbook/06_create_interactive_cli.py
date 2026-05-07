@@ -242,26 +242,34 @@ class AIAgent:
 
     # MÉTODOS DE AYUDA (Iguales a los tuyos)
     def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
-        if tool_name == "read_file": return self._read_file(tool_input["path"])
-        if tool_name == "list_files": return self._list_files(tool_input.get("path", "."))
+        if tool_name == "read_file": 
+            return self._read_file(tool_input["path"])
+        if tool_name == "list_files": 
+            return self._list_files(tool_input.get("path", "."))
         if tool_name == "edit_file": 
             return self._edit_file(tool_input["path"], tool_input.get("old_text", ""), tool_input["new_text"])
         return f"Unknown tool: {tool_name}"
 
     def _read_file(self, path: str) -> str:
         try:
-            with open(path, "r", encoding="utf-8") as f: return f.read()
-        except Exception as e: return str(e)
+            with open(path, "r", encoding="utf-8") as f: 
+                return f.read()
+        except Exception as e: 
+            return str(e)
 
     def _list_files(self, path: str) -> str:
-        try: return str(os.listdir(path))
-        except Exception as e: return str(e)
+        try: 
+            return str(os.listdir(path))
+        except Exception as e: 
+            return str(e)
 
     def _edit_file(self, path: str, old_text: str, new_text: str) -> str:
         try:
-            with open(path, "w", encoding="utf-8") as f: f.write(new_text)
+            with open(path, "w", encoding="utf-8") as f: 
+                f.write(new_text)
             return "Success"
-        except Exception as e: return str(e)
+        except Exception as e: 
+            return str(e)
 
 def main():
     parser = argparse.ArgumentParser(
